@@ -1,0 +1,111 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "imageTemplates_ubuntu24_jenkins_name": {
+            "defaultValue": "ubuntu24-jenkins-2",
+            "type": "String"
+        },
+        "galleries_images_externalid": {
+            "defaultValue": "/subscriptions/bd2bf01d-dee8-481b-a51a-fb60c79d8c9e/resourceGroups/image-gallery/providers/Microsoft.Compute/galleries/images",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.VirtualMachineImages/imageTemplates",
+            "apiVersion": "2024-02-01",
+            "name": "[parameters('imageTemplates_ubuntu24_jenkins_name')]",
+            "location": "uksouth",
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "/subscriptions/bd2bf01d-dee8-481b-a51a-fb60c79d8c9e/resourceGroups/image-gallery/providers/Microsoft.ManagedIdentity/userAssignedIdentities/image-builder": {}
+                }
+            },
+            "properties": {
+                "buildTimeoutInMinutes": 0,
+                "customize": [
+                    {
+                        "name": "install-java",
+                        "scriptUri": "https://raw.githubusercontent.com/jenkinsci/azure-vm-agents-plugin/refs/heads/master/src/main/resources/scripts/ubuntuInstallJavaScript.sh",
+                        "sha256Checksum": "76cc526d9d1719e4a842fe305bb73c6e89cdb1442061cadb39981d052b70dc5e",
+                        "type": "Shell"
+                    },
+                    {
+                        "name": "install-maven",
+                        "scriptUri": "https://raw.githubusercontent.com/jenkinsci/azure-vm-agents-plugin/refs/heads/master/src/main/resources/scripts/ubuntuInstallMavenScript.sh",
+                        "sha256Checksum": "661c499e436aab82d91f34e28857ae3f08ddd20174e1c3167976befd3436e937",
+                        "type": "Shell"
+                    },
+                    {
+                        "name": "shellscriptscript3",
+                        "scriptUri": "https://raw.githubusercontent.com/jenkinsci/azure-vm-agents-plugin/refs/heads/master/src/main/resources/scripts/ubuntuInstallGitScript.sh",
+                        "sha256Checksum": "104ca6bd7cc3d991f6847545a31b7e9a9497d1d1502e4a445e29120788947b82",
+                        "type": "Shell"
+                    },
+                    {
+                        "name": "remove-unattended-upgrades",
+                        "inline": [ "sudo apt remove -y unattended-upgrades && sudo apt autoremove -y" ],
+                        "type": "Shell"
+                    }
+
+                ],
+                "distribute": [
+                    {
+                        "artifactTags": {},
+                        "excludeFromLatest": false,
+                        "galleryImageId": "[concat(parameters('galleries_images_externalid'), '/images/jenkins-agent')]",
+                        "replicationRegions": [
+                            "uksouth"
+                        ],
+                        "runOutputName": "runOutputImageVersion",
+                        "type": "SharedImage"
+                    }
+                ],
+                "optimize": {
+                    "vmBoot": {
+                        "state": "Enabled"
+                    }
+                },
+                "source": {
+                    "offer": "ubuntu-24_04-lts",
+                    "publisher": "canonical",
+                    "sku": "server",
+                    "type": "PlatformImage",
+                    "version": "latest"
+                },
+                "validate": {
+                    "inVMValidations": [
+                        {
+                            "inline": [
+                                "java -version"
+                            ],
+                            "name": "java-exists",
+                            "type": "Shell"
+                        },
+                        {
+                            "inline": [
+                                "git --version"
+                            ],
+                            "name": "git-exists",
+                            "type": "Shell"
+                        },
+                        {
+                            "inline": [
+                                "mvn --version"
+                            ],
+                            "name": "maven-exists",
+                            "type": "Shell"
+                        }
+                    ]
+                },
+                "vmProfile": {
+                    "osDiskSizeGB": 30,
+                    "vmSize": "Standard_DS1_v2"
+                }
+            }
+        }
+    ]
+}
